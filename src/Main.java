@@ -26,10 +26,13 @@ public class Main {
     private static int width = 1200;
     private static int height = 700;
 
+    private static int totalStrokes = 0;
+    private static int correctStrokes = 0;
     private static JLabel current;
     private static JLabel nextUp;
     private static JLabel last;
 
+    private static JLabel accuracy;
 
     private static int currentIndex = 0;
     private static String nextToType;
@@ -45,17 +48,18 @@ public class Main {
         URL url = new URL("https://api.openai.com/v1/chat/completions");
         HttpURLConnection httpConn = (HttpURLConnection) url.openConnection();
         httpConn.setRequestMethod("POST");
-        httpConn.setRequestProperty("Content-Type", "application/json");
+        httpConn.setRequestProperty("Content-Type", "applicatio/json");
 
         // Replace with your actual API key
-        String apiKey = "Your_key_here";
+        String apiKey = "";
         httpConn.setRequestProperty("Authorization", "Bearer " + apiKey);
         httpConn.setDoOutput(true);
+        httpConn.setRequestProperty("Content-Type", "application/json");
 
         // Build the JSON payload using JSON-simple
         JSONObject jsonBody = new JSONObject();
         // Use a proper model identifier (adjust as needed)
-        jsonBody.put("model", "gpt-3.5-turbo");
+        jsonBody.put("model", "gpt-4o");
 
         // Create the messages array and add our user message
         JSONArray messages = new JSONArray();
@@ -71,7 +75,7 @@ public class Main {
         writer.flush();
         writer.close();
 
-        // Get the response stream
+        // Gt the response stream
         int responseCode = httpConn.getResponseCode();
         InputStream responseStream = (responseCode / 100 == 2)
                 ? httpConn.getInputStream()
@@ -79,6 +83,8 @@ public class Main {
         Scanner scanner = new Scanner(responseStream).useDelimiter("\\A");
         String response = scanner.hasNext() ? scanner.next() : "";
         scanner.close();
+
+        System.out.println(response);
 
         // Parse the response JSON
         JSONParser parser = new JSONParser();
@@ -146,6 +152,18 @@ public class Main {
         current.setFont(f);
 
 
+//        create a set of panels to have a mini-map
+        JPanel minimap = new JPanel();
+
+        minimap.setLayout(new GridLayout(2,1));
+
+        JLabel minimapLabel = new JLabel();
+
+        minimapLabel.setText(typingTarget.substring(currentIndex));
+
+
+        minimap.add(minimapLabel);
+        minimap.add(textInput);
 
         JPanel charPanel = new JPanel();
         GridLayout gridLayout1 = new GridLayout();
@@ -166,9 +184,11 @@ public class Main {
 
                         // Retrieve the text that was inserted (for debugging or additional logic)
                         String typed = e.getDocument().getText(offset, length);
-
+                        totalStrokes++;
                         if (typed.equals(nextToType)) {
+                            correctStrokes++;
                             goToNextChar(typingTarget);
+                            minimapLabel.setText(typingTarget.substring(currentIndex));
 
                             // Create a style and set its foreground color to red
                             Style style = textInput.addStyle("ColoredStyle", null);
@@ -186,6 +206,7 @@ public class Main {
                             // Apply the style to the inserted text
                             doc.setCharacterAttributes(offset, length, style, false);
                         }
+                        System.out.println(accuracy());
                     } catch (BadLocationException ex) {
                         ex.printStackTrace();
                     }
@@ -203,7 +224,7 @@ public class Main {
             }
         });
 
-        mainFrame.add(new JScrollPane(textInput), BorderLayout.SOUTH);
+        mainFrame.add(minimap, BorderLayout.SOUTH);
         mainFrame.add(charPanel, BorderLayout.CENTER);
         mainFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         mainFrame.setVisible(true);
@@ -214,7 +235,10 @@ public class Main {
         currentIndex++;
         nextToType = typingTarget.substring(currentIndex, currentIndex+1);
         twoAhead = typingTarget.substring(currentIndex+1, currentIndex+2);
+    }
 
+    private static float accuracy() {
+        return (float) (correctStrokes / totalStrokes);
     }
 
 }
